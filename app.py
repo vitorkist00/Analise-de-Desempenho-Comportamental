@@ -77,9 +77,7 @@ with st.form("registro_aba", clear_on_submit=True):
     st.write("---")
     st.write("### Registro de Dicas")
     
-    # Criando as 5 colunas de uma vez
     c1, c2, c3, c4, c5 = st.columns(5)
-    
     ft = c1.number_input("FT", min_value=0, step=1)
     fp = c2.number_input("FP", min_value=0, step=1)
     gt = c3.number_input("GT", min_value=0, step=1)
@@ -88,19 +86,18 @@ with st.form("registro_aba", clear_on_submit=True):
 
     botao_salvar = st.form_submit_button("💾 SALVAR REGISTRO", use_container_width=True)
 
-# --- LÓGICA DE SALVAMENTO ---
+# --- LÓGICA DE SALVAMENTO ACUMULATIVO ---
 if botao_salvar:
     if paciente_selecionado != "" and nome_treino != "":
         total = ft + fp + gt + vt + id_ind
         score = ((id_ind * 4) + (vt * 3) + (gt * 2) + (fp * 1)) / (total * 4) * 100 if total > 0 else 0
         
         try:
-            # Tenta ler o histórico existente
-            try:
-                df_hist = conn.read(spreadsheet=url)
-            except:
-                df_hist = pd.DataFrame()
+            # 1. Lê a planilha ATUALIZADA no momento do clique
+            # O parâmetro ttl=0 garante que ele não use dados "velhos" do cache
+            df_hist = conn.read(spreadsheet=url, ttl=0)
 
+            # 2. Cria a nova linha
             nova_linha = pd.DataFrame([{
                 "Data": data_sessao.strftime("%d/%m/%Y"),
                 "Paciente": paciente_selecionado,
@@ -110,11 +107,13 @@ if botao_salvar:
                 "Aplicador": aplicador
             }])
 
-            # Adiciona ao final acumulando
+            # 3. Une o histórico com a nova linha (concatenação)
             df_final = pd.concat([df_hist, nova_linha], ignore_index=True)
+            
+            # 4. Atualiza a planilha inteira com a lista completa
             conn.update(spreadsheet=url, data=df_final)
             
-            st.success(f"Registro de {paciente_selecionado} salvo com sucesso!")
+            st.success(f"✅ Registro acumulado com sucesso na planilha!")
             st.balloons()
         except Exception as e:
             st.error(f"Erro ao salvar: {e}")
@@ -123,9 +122,10 @@ if botao_salvar:
 
 # --- CONSULTA RÁPIDA ---
 st.divider()
-if st.checkbox("Visualizar Histórico na Tela"):
+if st.checkbox("Visualizar Banco de Dados Atual"):
     try:
-        dados = conn.read(spreadsheet=url)
-        st.dataframe(dados.tail(15), use_container_width=True)
+        # Mostra os dados reais da planilha para conferência
+        dados_conferencia = conn.read(spreadsheet=url, ttl=0)
+        st.dataframe(dados_conferencia, use_container_width=True)
     except:
-        st.info("Aguardando registros.")
+        st.info("Nenhum dado encontrado.")
