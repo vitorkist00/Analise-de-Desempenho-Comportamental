@@ -64,24 +64,27 @@ pacientes = sorted([
 
 # --- FORMULÁRIO DE REGISTRO ---
 with st.form("registro_aba", clear_on_submit=True):
-    col_a, col_b = st.columns(2)
+    col_topo_1, col_topo_2 = st.columns(2)
     
-    with col_a:
+    with col_topo_1:
         paciente_selecionado = st.selectbox("Selecione a Criança", [""] + pacientes)
         data_sessao = st.date_input("Data da Avaliação", datetime.now())
         
-    with col_b:
+    with col_topo_2:
         nome_treino = st.text_input("Programa / Treino", placeholder="Ex: Contato Visual, Mando...")
         aplicador = st.text_input("Aplicador Responsável")
 
     st.write("---")
     st.write("### Registro de Dicas")
+    
+    # Criando as 5 colunas de uma vez
     c1, c2, c3, c4, c5 = st.columns(5)
-    with c1: ft = st.number_input("FT", min_value=0, step=1)
-    with c2: fp = st.number_input("FP", min_value=0, step=1)
-    with c3: gt = st.number_input("GT", min_value=0, step=1)
-    with c4: vt = st.number_input("VT", min_value=0, step=1)
-    with c5: id_ind = st.number_input("ID", min_value=0, step=1)
+    
+    ft = c1.number_input("FT", min_value=0, step=1)
+    fp = c2.number_input("FP", min_value=0, step=1)
+    gt = c3.number_input("GT", min_value=0, step=1)
+    vt = c4.number_input("VT", min_value=0, step=1)
+    id_ind = c5.number_input("ID", min_value=0, step=1)
 
     botao_salvar = st.form_submit_button("💾 SALVAR REGISTRO", use_container_width=True)
 
@@ -107,7 +110,7 @@ if botao_salvar:
                 "Aplicador": aplicador
             }])
 
-            # Adiciona ao final
+            # Adiciona ao final acumulando
             df_final = pd.concat([df_hist, nova_linha], ignore_index=True)
             conn.update(spreadsheet=url, data=df_final)
             
