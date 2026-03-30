@@ -1,19 +1,26 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
-import plotly.express as px
 from datetime import datetime
 
-# Configurações do Tablet
-st.set_page_config(page_title="Gestão Clínica ABA", layout="centered")
+# Configurações de exibição para o Tablet
+st.set_page_config(page_title="Registro Clínico ABA", layout="centered")
 
 st.title("📊 Registro de Hierarquia de Dicas")
-st.subheader("Casa do Autista - Coordenação")
+st.subheader("Coordenação - Casa do Autista")
 
-# 1. Entrada de Dados
-with st.form("registro_sessao", clear_on_submit=True):
+# URL da sua planilha
+url = "https://docs.google.com/spreadsheets/d/1qYarfuNSvsNA3IZ60jtff9VC3eFUqJ_ksENQa4OoGys/edit?usp=sharing"
+
+# Estabelece a conexão com o Google Sheets usando os Secrets
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+# Formulário de entrada de dados
+with st.form("registro_aba", clear_on_submit=True):
     nome = st.text_input("Nome da Criança")
     data_sessao = st.date_input("Data da Sessão", datetime.now())
     
+    st.write("---")
     col1, col2 = st.columns(2)
     with col1:
         ft = st.number_input("Dica Física Total (FT)", min_value=0, step=1)
@@ -23,29 +30,36 @@ with st.form("registro_sessao", clear_on_submit=True):
         vt = st.number_input("Dica Verbal (VT)", min_value=0, step=1)
         id_ind = st.number_input("Independente (ID)", min_value=0, step=1)
     
-    botao_salvar = st.form_submit_button("✅ Gerar link de Gravação")
+    botao_salvar = st.form_submit_button("✅ Gravar Dados na Planilha")
 
+# Lógica de processamento e envio
 if botao_salvar:
     if nome:
+        # Cálculo de Independência: ID(4), VT(3), GT(2), FP(1), FT(0)
         total = ft + fp + gt + vt + id_ind
         score = ((id_ind * 4) + (vt * 3) + (gt * 2) + (fp * 1)) / (total * 4) * 100 if total > 0 else 0
         
-        st.success(f"Cálculo Concluído para {nome}!")
-        st.metric("Independência", f"{score:.1f}%")
-        
-        # Como o Google bloqueia gravações diretas sem chaves de segurança pesadas,
-        # vamos usar um botão que abre a planilha já com os dados prontos ou 
-        # simplesmente exibe os dados para você dar um 'Check' final.
-        
-        st.info("Para gravar agora, copie os dados abaixo para sua planilha:")
-        dados_txt = f"{data_sessao.strftime('%d/%m/%Y')};{nome};{ft};{fp};{gt};{vt};{id_ind};{score:.1f}%"
-        st.code(dados_txt)
+        # 1. Ler os dados atuais da planilha
+        try:
+            df_atual = conn.read(spreadsheet=url)
+            
+            # 2. Criar a nova linha
+            nova_linha = pd.DataFrame([{
+                "Data": data_sessao.strftime("%d/%m/%Y"),
+                "Paciente": nome,
+                "FT": ft, "FP": fp, "GT": gt, "VT": vt, "ID": id_ind,
+                "Independencia": f"{score:.2f}%"
+            }])
+            
+            # 3. Concatenar e atualizar a planilha
+            df_final = pd.concat([df_atual, nova_linha], ignore_index=True)
+            conn.update(spreadsheet=url, data=df_final)
+            
+            st.success(f"Excelente! Os dados de {nome} foram gravados. Independência: {score:.1f}%")
+            st.balloons() # Efeito visual de sucesso
+            
+        except Exception as e:
+            st.error("Erro na conexão. Verifique se os 'Secrets' foram colados corretamente no painel do Streamlit.")
+            st.info("O e-mail da Conta de Serviço precisa ter permissão de 'Editor' na sua planilha.")
     else:
-        st.error("Por favor, preencha o nome.")
-
-# Gráfico de exemplo para visualização no tablet
-st.divider()
-st.write("### Visualização de Progresso")
-df_vis = pd.DataFrame({'Sessão': [1,2,3,4], 'Independência': [10, 25, 40, 60]})
-fig = px.line(df_vis, x='Sessão', y='Independência', markers=True)
-st.plotly_chart(fig, use_container_width=True)
+        st.warning("Por favor, introduza o nome do paciente.")
