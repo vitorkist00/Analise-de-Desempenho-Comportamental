@@ -63,7 +63,7 @@ pacientes = sorted([
 ])
 
 # --- FORMULÁRIO DE REGISTRO ---
-with st.container():
+with st.form("registro_aba", clear_on_submit=True):
     col_a, col_b = st.columns(2)
     
     with col_a:
@@ -71,30 +71,28 @@ with st.container():
         data_sessao = st.date_input("Data da Avaliação", datetime.now())
         
     with col_b:
-        nome_treino = st.text_input("Programa / Treino (Ex: Contato Visual, Mando...)", placeholder="Digite o nome do treino")
+        nome_treino = st.text_input("Programa / Treino", placeholder="Ex: Contato Visual, Mando...")
         aplicador = st.text_input("Aplicador Responsável")
 
     st.write("---")
-    st.write("### Nível de Ajuda (Frequência)")
+    st.write("### Registro de Dicas")
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1: ft = st.number_input("FT", min_value=0, step=1)
     with c2: fp = st.number_input("FP", min_value=0, step=1)
-    with col1: # Pequeno ajuste para manter a consistência do layout no tablet
-        pass
     with c3: gt = st.number_input("GT", min_value=0, step=1)
     with c4: vt = st.number_input("VT", min_value=0, step=1)
     with c5: id_ind = st.number_input("ID", min_value=0, step=1)
 
-    botao_salvar = st.button("💾 SALVAR REGISTRO", use_container_width=True)
+    botao_salvar = st.form_submit_button("💾 SALVAR REGISTRO", use_container_width=True)
 
 # --- LÓGICA DE SALVAMENTO ---
 if botao_salvar:
-    if paciente_selecionado and nome_treino:
+    if paciente_selecionado != "" and nome_treino != "":
         total = ft + fp + gt + vt + id_ind
         score = ((id_ind * 4) + (vt * 3) + (gt * 2) + (fp * 1)) / (total * 4) * 100 if total > 0 else 0
         
         try:
-            # Lê dados atuais para garantir que nada seja apagado
+            # Tenta ler o histórico existente
             try:
                 df_hist = conn.read(spreadsheet=url)
             except:
@@ -105,11 +103,11 @@ if botao_salvar:
                 "Paciente": paciente_selecionado,
                 "Treino": nome_treino.strip().upper(),
                 "FT": ft, "FP": fp, "GT": gt, "VT": vt, "ID": id_ind,
-                "Independência": f"{score:.2f}%",
+                "Independência (%)": f"{score:.2f}%",
                 "Aplicador": aplicador
             }])
 
-            # Adiciona ao final (Acúmulo)
+            # Adiciona ao final
             df_final = pd.concat([df_hist, nova_linha], ignore_index=True)
             conn.update(spreadsheet=url, data=df_final)
             
@@ -118,13 +116,13 @@ if botao_salvar:
         except Exception as e:
             st.error(f"Erro ao salvar: {e}")
     else:
-        st.warning("Selecione a criança e o nome do treino antes de salvar.")
+        st.warning("⚠️ Selecione a criança e o nome do treino antes de salvar.")
 
-# --- CONSULTA RÁPIDA NO TABLET ---
+# --- CONSULTA RÁPIDA ---
 st.divider()
 if st.checkbox("Visualizar Histórico na Tela"):
     try:
         dados = conn.read(spreadsheet=url)
         st.dataframe(dados.tail(15), use_container_width=True)
     except:
-        st.info("Aguardando primeiros registros.")
+        st.info("Aguardando registros.")
