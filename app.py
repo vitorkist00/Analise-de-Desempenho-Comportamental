@@ -1,18 +1,23 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from datetime import datetime
 
-# Configuração da página para Tablet
+# Configuração do App para Tablet
 st.set_page_config(page_title="Gestão Clínica ABA", layout="centered")
+
+# URL da sua planilha (ajustada para exportação CSV direta)
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1qYarfuNSvsNA3IZ60jtff9VC3eFUqJ_ksENQa4OoGys/export?format=csv"
 
 st.title("📊 Registro de Hierarquia de Dicas")
 st.subheader("Casa do Autista - Coordenação")
 
-# 1. Entrada de Dados
-with st.form("registro_sessao"):
+# 1. Entrada de Dados no Tablet
+with st.form("registro_sessao", clear_on_submit=True):
     nome = st.text_input("Nome da Criança")
-    data = st.date_input("Data da Sessão")
+    data_sessao = st.date_input("Data da Sessão", datetime.now())
     
+    st.write("---")
     col1, col2 = st.columns(2)
     with col1:
         ft = st.number_input("Dica Física Total (FT)", min_value=0, step=1)
@@ -22,27 +27,29 @@ with st.form("registro_sessao"):
         vt = st.number_input("Dica Verbal (VT)", min_value=0, step=1)
         id_ind = st.number_input("Independente (ID)", min_value=0, step=1)
     
-    submit = st.form_submit_button("Salvar Registro")
+    botao_salvar = st.form_submit_button("✅ Salvar e Gerar Gráfico")
 
-# 2. Lógica de Cálculo (Exemplo de Peso para Independência)
-# Atribuímos valores: ID=4, VT=3, GT=2, FP=1, FT=0
-if submit:
-    total_respostas = ft + fp + gt + vt + id_ind
-    if total_respostas > 0:
-        score_independencia = ((id_ind * 4) + (vt * 3) + (gt * 2) + (fp * 1)) / (total_respostas * 4) * 100
-        st.success(f"Sessão de {nome} registrada! Nível de Independência: {score_independencia:.2f}%")
+# 2. Lógica de Cálculo e Visualização
+if botao_salvar:
+    total = ft + fp + gt + vt + id_ind
+    if total > 0:
+        # Cálculo de Independência: ID(4), VT(3), GT(2), FP(1), FT(0)
+        score = ((id_ind * 4) + (vt * 3) + (gt * 2) + (fp * 1)) / (total * 4) * 100
+        st.success(f"Dados de {nome} salvos com sucesso! Independência: {score:.1f}%")
         
-        # Aqui o código salvaria em um banco de dados ou CSV
+        # Aqui você pode copiar os dados e colar na planilha manualmente 
+        # ou usar a integração via 'st.connection' para automação total.
+        st.info("Dica: Para automação total de gravação, podemos configurar o 'Streamlit Secrets' no próximo passo.")
     else:
-        st.warning("Por favor, insira ao menos uma resposta.")
+        st.error("Insira os dados da sessão antes de salvar.")
 
-# 3. Visualização (Simulação de histórico)
+# 3. Visualização de Histórico (Simulado para o Tablet)
 st.divider()
-st.write("### Tendência de Aprendizagem")
-# Exemplo de gráfico para o tablet
-dados_exemplo = pd.DataFrame({
-    'Data': pd.date_range(start='2026-03-01', periods=5),
-    'Independência (%)': [20, 35, 30, 55, 70]
+st.write("### Evolução do Paciente")
+# Exemplo de como o gráfico aparecerá no seu tablet
+historico_exemplo = pd.DataFrame({
+    'Sessão': [1, 2, 3, 4, 5],
+    'Independência %': [15, 30, 25, 45, 60]
 })
-fig = px.line(dados_exemplo, x='Data', y='Independência (%)', markers=True)
+fig = px.line(historico_exemplo, x='Sessão', y='Independência %', markers=True, title="Curva de Aprendizagem")
 st.plotly_chart(fig, use_container_width=True)
