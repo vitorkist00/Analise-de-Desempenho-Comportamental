@@ -1,21 +1,15 @@
 import streamlit as st
 import pandas as pd
-from streamlit_gsheets import GSheetsConnection
+import plotly.express as px
 from datetime import datetime
 
 # Configurações do Tablet
 st.set_page_config(page_title="Gestão Clínica ABA", layout="centered")
 
 st.title("📊 Registro de Hierarquia de Dicas")
-st.subheader("Casa do Autista - Registro Direto")
+st.subheader("Casa do Autista - Coordenação")
 
-# Link da sua planilha (ajustado para conexão)
-url = "https://docs.google.com/spreadsheets/d/1qYarfuNSvsNA3IZ60jtff9VC3eFUqJ_ksENQa4OoGys/edit?usp=sharing"
-
-# Criando a conexão com o Google Sheets
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-# 1. Formulário de Entrada
+# 1. Entrada de Dados
 with st.form("registro_sessao", clear_on_submit=True):
     nome = st.text_input("Nome da Criança")
     data_sessao = st.date_input("Data da Sessão", datetime.now())
@@ -29,28 +23,29 @@ with st.form("registro_sessao", clear_on_submit=True):
         vt = st.number_input("Dica Verbal (VT)", min_value=0, step=1)
         id_ind = st.number_input("Independente (ID)", min_value=0, step=1)
     
-    botao_salvar = st.form_submit_button("✅ Salvar na Planilha")
+    botao_salvar = st.form_submit_button("✅ Gerar link de Gravação")
 
 if botao_salvar:
     if nome:
-        # Cálculo de Independência
         total = ft + fp + gt + vt + id_ind
         score = ((id_ind * 4) + (vt * 3) + (gt * 2) + (fp * 1)) / (total * 4) * 100 if total > 0 else 0
         
-        # Preparando a nova linha para a planilha
-        nova_linha = pd.DataFrame([{
-            "Data": data_sessao.strftime("%d/%m/%Y"),
-            "Paciente": nome,
-            "FT": ft, "FP": fp, "GT": gt, "VT": vt, "ID": id_ind,
-            "Independencia": f"{score:.2f}%"
-        }])
-
-        # Lendo dados atuais e adicionando o novo
-        dados_atuais = conn.read(spreadsheet=url, usecols=[0,1,2,3,4,5,6,7])
-        dados_atualizados = pd.concat([dados_atuais, nova_linha], ignore_index=True)
+        st.success(f"Cálculo Concluído para {nome}!")
+        st.metric("Independência", f"{score:.1f}%")
         
-        # Salvando de volta na planilha
-        conn.update(spreadsheet=url, data=dados_atualizados)
-        st.success(f"Dados de {nome} enviados para a planilha!")
+        # Como o Google bloqueia gravações diretas sem chaves de segurança pesadas,
+        # vamos usar um botão que abre a planilha já com os dados prontos ou 
+        # simplesmente exibe os dados para você dar um 'Check' final.
+        
+        st.info("Para gravar agora, copie os dados abaixo para sua planilha:")
+        dados_txt = f"{data_sessao.strftime('%d/%m/%Y')};{nome};{ft};{fp};{gt};{vt};{id_ind};{score:.1f}%"
+        st.code(dados_txt)
     else:
-        st.error("Por favor, preencha o nome da criança.")
+        st.error("Por favor, preencha o nome.")
+
+# Gráfico de exemplo para visualização no tablet
+st.divider()
+st.write("### Visualização de Progresso")
+df_vis = pd.DataFrame({'Sessão': [1,2,3,4], 'Independência': [10, 25, 40, 60]})
+fig = px.line(df_vis, x='Sessão', y='Independência', markers=True)
+st.plotly_chart(fig, use_container_width=True)
