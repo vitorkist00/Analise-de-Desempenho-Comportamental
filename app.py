@@ -23,13 +23,13 @@ with st.form("registro_aba", clear_on_submit=True):
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         paciente_selecionado = st.selectbox("Selecione a Criança", [""] + pacientes)
-        st.info("📅 Data e Hora serão registradas automaticamente.")
+        st.info("📅 Data e Hora automáticas.")
     with col_t2:
-        nome_treino = st.text_input("Programa / Treino", placeholder="Ex: Mando, Tato, Imitação...")
+        nome_treino = st.text_input("Programa / Treino", placeholder="Ex: Mando, Tato...")
         psicologo_responsavel = st.selectbox("Psicólogo(a) Responsável", [""] + profissionais)
 
     st.write("---")
-    st.write("### Registro de Dicas (Frequência)")
+    st.write("### Registro de Dicas")
     c1, c2, c3, c4, c5 = st.columns(5)
     ft = c1.number_input("FT", min_value=0, step=1)
     fp = c2.number_input("FP", min_value=0, step=1)
@@ -45,18 +45,13 @@ if botao_salvar:
         total_tentativas = ft + fp + gt + vt + id_ind
         
         if total_tentativas > 0:
-            # Captura automática de data/hora (Brasil)
             fuso_br = pytz.timezone('America/Sao_Paulo')
             agora = datetime.now(fuso_br)
-            
-            # Lógica de pesos: ID=1.0, VT=0.75, GT=0.50, FP=0.25, FT=0.0
             pontos = (id_ind * 1.0) + (vt * 0.75) + (gt * 0.5) + (fp * 0.25) + (ft * 0.0)
             score = (pontos / total_tentativas) * 100
             
             try:
-                # Lê histórico para acumular
                 df_hist = conn.read(spreadsheet=url, ttl=0)
-
                 nova_linha = pd.DataFrame([{
                     "Data": agora.strftime("%d/%m/%Y"),
                     "Hora": agora.strftime("%H:%M:%S"),
@@ -67,23 +62,21 @@ if botao_salvar:
                     "Independência (%)": f"{score:.2f}%",
                     "Psicólogo(a)": psicologo_responsavel
                 }])
-
                 df_final = pd.concat([df_hist, nova_linha], ignore_index=True)
                 conn.update(spreadsheet=url, data=df_final)
-                
-                st.success(f"✅ Registro de {paciente_selecionado} salvo com sucesso!")
+                st.success(f"✅ Salvo com sucesso!")
                 st.balloons()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
         else:
             st.warning("⚠️ Insira ao menos uma tentativa.")
     else:
-        st.warning("⚠️ Preencha todos os campos antes de salvar.")
+        st.warning("⚠️ Preencha todos os campos.")
 
 # --- CONSULTA ---
 st.divider()
-if st.checkbox("Visualizar Banco de Dados Atual"):
+if st.checkbox("Visualizar Histórico"):
     try:
         st.dataframe(conn.read(spreadsheet=url, ttl=0), use_container_width=True)
     except:
-        st.info("Planilha em
+        st.info("Planilha em carregamento.")
