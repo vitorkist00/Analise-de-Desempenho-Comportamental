@@ -58,13 +58,13 @@ if botao_salvar:
                     "Paciente": paciente_selecionado,
                     "Treino": nome_treino.strip().upper(),
                     "FT": ft, "FP": fp, "GT": gt, "VT": vt, "ID": id_ind,
-                    "Total": total_tentativas,
+                    "Total Tentativas": total_tentativas,
                     "Independência (%)": f"{score:.2f}%",
                     "Psicólogo(a)": psicologo_responsavel
                 }])
                 df_final = pd.concat([df_hist, nova_linha], ignore_index=True)
                 conn.update(spreadsheet=url, data=df_final)
-                st.success(f"✅ Salvo com sucesso!")
+                st.success(f"✅ Registro salvo com sucesso!")
                 st.balloons()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
@@ -72,11 +72,3 @@ if botao_salvar:
             st.warning("⚠️ Insira ao menos uma tentativa.")
     else:
         st.warning("⚠️ Preencha todos os campos.")
-
-# --- CONSULTA ---
-st.divider()
-if st.checkbox("Visualizar Histórico"):
-    try:
-        st.dataframe(conn.read(spreadsheet=url, ttl=0), use_container_width=True)
-    except:
-        st.info("Planilha em carregamento.")
